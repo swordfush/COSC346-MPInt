@@ -18,10 +18,13 @@ struct MPUInteger
 	void multiply(const MPUInteger *x);
 	MPUInteger *divide(const MPUInteger *x);
 
-
 	bool isLessThan(const MPUInteger *x) const;
 
 	void debug() const;
+
+	size_t bitSize() const;
+	int bit(size_t index) const;
+	void setBit(size_t index, int value);
 
 	private:
 		MPUInteger(uint32_t value);

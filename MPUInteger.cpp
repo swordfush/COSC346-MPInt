@@ -14,7 +14,8 @@ MPUInteger::MPUInteger(uint32_t value)
 	digits->setItem(0, value);
 }
 
-MPUInteger::MPUInteger(const UInt32Vector *vector)
+// Claims ownership of vector
+MPUInteger::MPUInteger(UInt32Vector *vector)
 {
 	digits = vector->copy();
 }
@@ -27,7 +28,7 @@ MPUInteger::~MPUInteger()
 
 MPUInteger *MPUInteger::copy() const
 {
-	return new MPUInteger(this->digits);
+	return new MPUInteger(this->digits->copy());
 }
 
 
@@ -175,6 +176,16 @@ void MPUInteger::multiply(const MPUInteger *x)
 MPUInteger *MPUInteger::divide(const MPUInteger *x)
 {
 	assert(false);
+
+	MPUInteger *result = new MPUInteger(UInt32Vector::initWithSize(x->digits->size()));
+
+
+
+
+
+
+
+
 	return NULL;
 }
 
@@ -225,6 +236,41 @@ bool MPUInteger::isLessThan(const MPUInteger *x) const
 	}
 
 	return this->digits->item(0) < x->digits->item(0);
+}
+
+
+size_t MPUInteger::bitSize() const
+{
+	return 32 * this->digits->size();
+}
+
+int MPUInteger::bit(size_t index) const
+{
+	size_t uintIndex = index / 32;
+	uint32_t mask = ((uint32_t)1) << (index % 32);
+
+	return this->digits->item(uintIndex) & mask;
+}
+
+void MPUInteger::setBit(size_t index, int value)
+{
+	assert(value == 1 || value == 0);
+
+	size_t uintIndex = index / 32;
+	uint32_t mask = ((uint32_t)1) << (index % 32); 
+
+	uint32_t uint = this->digits->item(uintIndex);
+
+	if (value)
+	{
+		uint |= mask;
+	}
+	else
+	{
+		uint &= ~mask;
+	}
+	
+	this->digits->setItem(uintIndex, uint);
 }
 
 
