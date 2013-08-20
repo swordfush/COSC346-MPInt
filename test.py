@@ -11,6 +11,9 @@ def printnum(num):
 		print num % max
 		num = num / max
 
+def quote(string):
+	return "\"{0}\"".format(string)
+
 def tryOperation(a, b, op, expect):
 	expect = str(expect)
 
@@ -18,8 +21,8 @@ def tryOperation(a, b, op, expect):
 
 	if output != expect:
 		print "Failed", a, op, b
-		print "\tExpected:", expect
-		print "\tGot:", output
+		print "\tExpected:", quote(expect)
+		print "\tGot:", quote(output)
 
 
 for i in range(0, testCount):

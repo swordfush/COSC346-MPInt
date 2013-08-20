@@ -63,7 +63,5 @@ int main(int argc, const char **argv)
 	delete a;
 	delete b;
 
-	cout << endl;
-
 	return EXIT_SUCCESS;
 }
