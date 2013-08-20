@@ -22,13 +22,20 @@ struct MPUInteger
 
 	void debug() const;
 
-	size_t bitSize() const;
-	int bit(size_t index) const;
-	void setBit(size_t index, int value);
+	bool isZero() const;
 
+	uint32_t lowestBase10Digit() const;
+	
 	private:
 		MPUInteger(uint32_t value);
-		MPUInteger(const UInt32Vector *vector);
+		MPUInteger(UInt32Vector *vector);
+
+		size_t bitSize() const;
+		int bit(size_t index) const;
+		void setBit(size_t index, int value);
+
+		void shiftLeft();
+
 
 		UInt32Vector *digits;
 

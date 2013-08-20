@@ -4,9 +4,14 @@
 
 #include "MPUInteger.hpp"
 
+#include <string>
+
 
 struct MPInteger
 {
+	static MPInteger *initWithString(const char *str);
+	std::string description() const;
+
 	~MPInteger();
 
 	MPInteger *copy() const;
@@ -18,6 +23,8 @@ struct MPInteger
 	MPInteger *modulus(const MPInteger *x) const;
 
 	bool isLessThan(const MPInteger *x) const;
+
+	void debug() const;
 
 	private:
 		MPInteger(MPUInteger *magnitude, bool isSigned);

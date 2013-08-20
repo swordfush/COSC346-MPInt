@@ -3,6 +3,7 @@
 #include <cassert>
 
 
+
 MPUInteger *MPUInteger::initWithUInt32Value(uint32_t value)
 {
 	return new MPUInteger(value);
@@ -17,12 +18,15 @@ MPUInteger::MPUInteger(uint32_t value)
 // Claims ownership of vector
 MPUInteger::MPUInteger(UInt32Vector *vector)
 {
-	digits = vector->copy();
+	digits = vector;
 }
 
 MPUInteger::~MPUInteger()
 {
-	delete digits;
+	if (digits != NULL)
+	{
+		delete digits;
+	}
 }
 
 
@@ -39,7 +43,15 @@ MPUInteger *MPUInteger::copy() const
 
 void MPUInteger::add(const MPUInteger *x)
 {
-	assert(this != x);
+	// We cannot add the same instance to itself
+	// Instead we'll copy it then delete the copy
+	if (this == x)
+	{
+		MPUInteger *copy = this->copy();
+		this->add(copy);
+		delete copy;
+		return;
+	}
 
 	const size_t length = x->digits->size();
 
@@ -50,6 +62,8 @@ void MPUInteger::add(const MPUInteger *x)
 
 	size_t i;
 	
+	// Add all digits together, and move the carry on to the
+	// next addition
 	for (i = 0; i < length; ++i)
 	{
 		uint64_t result = (uint64_t)this->digits->item(i)
@@ -78,6 +92,7 @@ void MPUInteger::add(const MPUInteger *x)
 
 // Attempts to borrow for index i
 // Note that this does not actually write to index i
+// It also assumes that it will be able to borrow eventually
 static void borrow(UInt32Vector *vector, size_t i)
 {
 	uint32_t nextValue = vector->item(i+1);
@@ -95,7 +110,14 @@ static void borrow(UInt32Vector *vector, size_t i)
 
 void MPUInteger::subtract(const MPUInteger *x)
 {
-	assert(this != x);
+	if (this == x)
+	{
+		// Delete this instances' value and replace it with 0
+		delete this->digits;
+		this->digits = UInt32Vector::initWithSize(1);
+
+		return;
+	}
 
 	assert(!(this->isLessThan(x)));
 
@@ -118,6 +140,7 @@ void MPUInteger::subtract(const MPUInteger *x)
 	}
 }
 
+// Adds LOW(value) at the index specified, and HIGH(value) to the next index
 static void addAtIndex(UInt32Vector *vector, size_t index, uint64_t value)
 {
 	// Ensure that the indices we'll be using exist
@@ -144,9 +167,15 @@ static void addAtIndex(UInt32Vector *vector, size_t index, uint64_t value)
 
 void MPUInteger::multiply(const MPUInteger *x)
 {
-	assert(this != x);
+	if (this == x)
+	{
+		MPUInteger *copy = this->copy();
+		this->multiply(copy);
+		delete copy;
+		return;
+	}
 
-	// Create a copy of the integer to read from
+	// Create a copy of this
 	MPUInteger *y = this->copy();
 
 	// Zero out our current integer -- we'll be adding everything to it
@@ -163,8 +192,7 @@ void MPUInteger::multiply(const MPUInteger *x)
 
 		for (size_t j = 0; j < y->digits->size(); ++j)
 		{
-			uint64_t result = (uint64_t)x->digits->item(i) 
-				* (uint64_t)y->digits->item(j);
+			uint64_t result = (uint64_t)x->digits->item(i) * (uint64_t)y->digits->item(j);
 
 			addAtIndex(this->digits, i + j, result);
 		}
@@ -173,20 +201,90 @@ void MPUInteger::multiply(const MPUInteger *x)
 	delete y;
 }
 
+bool MPUInteger::isZero() const
+{
+	for (size_t i = 0; i < this->digits->size(); ++i)
+	{
+		if (this->digits->item(i) != 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 MPUInteger *MPUInteger::divide(const MPUInteger *x)
 {
-	assert(false);
+	assert(!x->isZero());
 
-	MPUInteger *result = new MPUInteger(UInt32Vector::initWithSize(x->digits->size()));
+	if (this == x)
+	{
+		delete this->digits;
+		this->digits = UInt32Vector::initWithSize(1);
+		this->digits->setItem(0, 1);
 
+		return MPUInteger::initWithUInt32Value(0);
+	}
 
+	MPUInteger *remainder;
 
+	// If the dividend is less than the divisor then we have 
+	// the dividend as the remainder, and 0 as the result
+	if (this->isLessThan(x))
+	{
+		// Give our digits to an instance for the remainder
+		remainder = new MPUInteger(this->digits);
 
+		// Allocate a new vector for our digits (automatically zeroed)
+		this->digits = UInt32Vector::initWithSize(1);
 
+		return remainder;
+	}
 
+	// Otherwise we'll perform long division in base 2
 
+	size_t index = this->bitSize() - 1;
 
-	return NULL;
+	remainder = new MPUInteger((uint32_t)this->bit(index));
+
+	// Find the prefix which is greater than the divisor (x)
+	while (remainder->isLessThan(x))
+	{
+		--index;
+		remainder->shiftLeft();
+		remainder->setBit(0, this->bit(index));
+	}
+
+	// We've found at least one multiple of x, so put that in the result
+	MPUInteger *result = new MPUInteger(1);
+
+	// Loop through the remaining indices
+	while (index --> 0)
+	{
+		if (remainder->isLessThan(x))
+		{
+			result->shiftLeft();
+			result->setBit(0, 1);
+			remainder->subtract(x);
+		}
+		else
+		{
+			result->shiftLeft();
+		}
+
+		remainder->shiftLeft();
+		remainder->setBit(0, this->bit(index));
+	}
+
+	// Steal the result
+	delete this->digits;
+	this->digits = result->digits;
+
+	result->digits = NULL;
+	delete result;
+
+	return remainder;
 }
 
 
@@ -249,12 +347,12 @@ int MPUInteger::bit(size_t index) const
 	size_t uintIndex = index / 32;
 	uint32_t mask = ((uint32_t)1) << (index % 32);
 
-	return this->digits->item(uintIndex) & mask;
+	return (this->digits->item(uintIndex) & mask) >> index;
 }
 
 void MPUInteger::setBit(size_t index, int value)
 {
-	assert(value == 1 || value == 0);
+	assert(value <= 1);
 
 	size_t uintIndex = index / 32;
 	uint32_t mask = ((uint32_t)1) << (index % 32); 
@@ -273,6 +371,18 @@ void MPUInteger::setBit(size_t index, int value)
 	this->digits->setItem(uintIndex, uint);
 }
 
+void MPUInteger::shiftLeft()
+{
+	// A single shift left can be seen as multiplication by 2
+	MPUInteger *mp2 = new MPUInteger(2);
+	this->multiply(mp2);
+	delete mp2;
+}
+
+uint32_t MPUInteger::lowestBase10Digit() const
+{
+	return this->digits->item(0);
+}
 
 
 void MPUInteger::debug() const

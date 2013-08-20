@@ -76,12 +76,12 @@ size_t UInt32Vector::size() const
 
 void UInt32Vector::debug() const
 {
-	std::cout << "UInt32Vector:";
+	std::cerr << "UInt32Vector:";
 
 	for (size_t i = 0; i < this->size(); ++i)
 	{
-		std::cout << "\n\t[" << i << "]\t" << this->item(i);
+		std::cerr << "\n\t[" << i << "]\t" << this->item(i);
 	}
 
-	std::cout << std::endl;
+	std::cerr << std::endl;
 }

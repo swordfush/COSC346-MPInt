@@ -1,5 +1,73 @@
 #include "MPInteger.hpp"
 
+#include <algorithm>
+#include <cstring>
+#include <cassert>
+
+
+MPInteger *MPInteger::initWithString(const char *str)
+{
+	MPInteger *newInt = new MPInteger(MPUInteger::initWithUInt32Value(0), false);
+
+	size_t i = 0;
+	const size_t length = strlen(str);
+
+	if (str[i] == '-')
+	{
+		++i;
+		newInt->isSigned = true;
+	}
+	else if (str[i] == '+')
+	{
+		++i;
+	}
+
+	const MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
+
+	for (; i < length; ++i)
+	{
+		newInt->magnitude->multiply(mp10);
+
+		char chr = str[i];
+		assert(chr >= '0' && chr <= '9');
+
+		MPUInteger *digit = MPUInteger::initWithUInt32Value(chr - '0');
+		newInt->magnitude->add(digit);
+		delete digit;
+	}
+
+	delete mp10;
+
+	return newInt;
+}
+
+std::string MPInteger::description() const
+{
+	std::string desc = "";
+
+	MPUInteger *copy = this->magnitude->copy();
+	MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
+
+	while (!copy->isZero())
+	{
+		MPUInteger *remainder = copy->divide(mp10);
+
+		desc.push_back('0' + remainder->lowestBase10Digit());
+
+		delete remainder;
+	}
+
+	delete copy;
+	delete mp10;
+
+	if (this->isSigned)
+		desc.push_back('-');
+
+	std::reverse(desc.begin(), desc.end());
+
+	return desc;
+}
+
 
 MPInteger::MPInteger(MPUInteger *magnitude, bool isSigned)
 {
@@ -140,4 +208,9 @@ bool MPInteger::isLessThan(const MPInteger *x) const
 		// Both have different signs, so if this is negative then it is smaller
 		return this->isSigned;
 	}
+}
+
+void MPInteger::debug() const
+{
+	this->magnitude->debug();
 }
