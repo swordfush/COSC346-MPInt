@@ -381,7 +381,7 @@ void MPUInteger::shiftLeft()
 
 uint32_t MPUInteger::lowestBase10Digit() const
 {
-	return this->digits->item(0);
+	return this->digits->item(0) % 10;
 }
 
 
