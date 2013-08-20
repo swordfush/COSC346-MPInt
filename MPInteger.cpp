@@ -177,6 +177,12 @@ MPInteger *MPInteger::divide(const MPInteger *x) const
 
 	result->isSigned = this->isSigned ^ x->isSigned;
 
+	// Handle the result of floored division where the result is negative
+	if (result->isSigned)
+	{
+		result->magnitude->add(1);
+	}
+
 	return result;
 }
 
