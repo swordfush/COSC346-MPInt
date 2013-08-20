@@ -43,10 +43,15 @@ MPInteger *MPInteger::initWithString(const char *str)
 
 std::string MPInteger::description() const
 {
-	std::string desc = "";
-
 	MPUInteger *copy = this->magnitude->copy();
-	MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
+	const MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
+
+	if (copy->isZero())
+	{
+		return "0";
+	}
+
+	std::string desc = "";
 
 	while (!copy->isZero())
 	{
