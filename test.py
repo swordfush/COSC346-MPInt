@@ -5,19 +5,21 @@ import random
 testCount = int(sys.argv[1])
 maxBits = 32 * 5
 
-def printnum(num):
+def debug(num):
 	max = 2**32 - 1
+	desc = ""
 	while num != 0:
-		print num % max
+		desc += str(num % max) + "\n"
 		num = num / max
+	return desc
 
 def quote(string):
 	return "\"{0}\"".format(string)
 
 def tryOperation(a, b, op, expect):
-	expect = str(expect)
+	output = subprocess.check_output(["./test", str(a), op, str(b)], stderr=subprocess.STDOUT)
 
-	output = subprocess.check_output(["./test", str(a), op, str(b)])
+	expect = "{0}\n{1}".format(expect, debug(expect))
 
 	if output != expect:
 		print "Failed", a, op, b
@@ -35,5 +37,6 @@ for i in range(0, testCount):
 	tryOperation(a, b, "+", a + b)
 	tryOperation(a, b, "-", a - b)
 	tryOperation(a, b, "*", a * b)
-	tryOperation(a, b, "/", a / b)
-	tryOperation(a, b, "%", a % b)
+	if (b != 0):
+		tryOperation(a, b, "/", a / b)
+		tryOperation(a, b, "%", a % b)

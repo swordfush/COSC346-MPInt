@@ -22,13 +22,6 @@ int main(int argc, const char **argv)
 	MPInteger *a = MPInteger::initWithString(argv[1]);
 	MPInteger *b = MPInteger::initWithString(argv[3]);
 
-	/*
-	cout << "a = ";
-	a->debug();
-	cout << "\nb = ";
-	b->debug();
-	*/
-
 	MPInteger *result;
 
 	switch (argv[2][0])
@@ -53,12 +46,8 @@ int main(int argc, const char **argv)
 			return EXIT_FAILURE;
 	}
 
-	/*
-	cout << "\nresult = ";
+	cout << result->description() << std::endl;
 	result->debug();
-	*/
-
-	cout << result->description();
 	delete result;
 	delete a;
 	delete b;
