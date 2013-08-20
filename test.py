@@ -6,6 +6,8 @@ testCount = int(sys.argv[1])
 maxBits = 32 * 5
 
 def debug(num):
+	if num < 0:
+		num = -num
 	max = 2**32 - 1
 	desc = ""
 	while num != 0:
@@ -17,6 +19,7 @@ def quote(string):
 	return "\"{0}\"".format(string)
 
 def tryOperation(a, b, op, expect):
+	print "Trying operation {0} {1} {2} -- Expecting {3}".format(a, op, b, expect)
 	output = subprocess.check_output(["./test", str(a), op, str(b)], stderr=subprocess.STDOUT)
 
 	expect = "{0}\n{1}".format(expect, debug(expect))
@@ -37,6 +40,6 @@ for i in range(0, testCount):
 	tryOperation(a, b, "+", a + b)
 	tryOperation(a, b, "-", a - b)
 	tryOperation(a, b, "*", a * b)
-	if (b != 0):
-		tryOperation(a, b, "/", a / b)
-		tryOperation(a, b, "%", a % b)
+#if (b != 0):
+#		tryOperation(a, b, "/", a / b)
+#		tryOperation(a, b, "%", a % b)

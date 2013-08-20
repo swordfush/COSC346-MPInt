@@ -13,19 +13,22 @@ struct MPUInteger
 	MPUInteger *copy() const;
 
 	void add(const MPUInteger *x);
-	// this must be greater than x
 	void subtract(const MPUInteger *x);
 	void multiply(const MPUInteger *x);
 	MPUInteger *divide(const MPUInteger *x);
 
 	bool isLessThan(const MPUInteger *x) const;
-
-	void debug() const;
+	bool isLessThanUInt32(uint32_t x) const;
 
 	bool isZero() const;
 
-	uint32_t lowestBase10Digit() const;
-	
+	void addUInt32(uint32_t x);
+	void subtractUInt32(uint32_t x);
+	void multiplyUInt32(uint32_t x);
+	uint32_t divideUInt32(uint32_t x);
+
+	void debug() const;
+
 	private:
 		MPUInteger(uint32_t value);
 		MPUInteger(UInt32Vector *vector);

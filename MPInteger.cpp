@@ -22,48 +22,36 @@ MPInteger *MPInteger::initWithString(const char *str)
 		++i;
 	}
 
-	const MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
-
 	for (; i < length; ++i)
 	{
-		newInt->magnitude->multiply(mp10);
+		newInt->magnitude->multiplyUInt32(10);
 
 		char chr = str[i];
 		assert(chr >= '0' && chr <= '9');
 
-		MPUInteger *digit = MPUInteger::initWithUInt32Value(chr - '0');
-		newInt->magnitude->add(digit);
-		delete digit;
+		newInt->magnitude->addUInt32(chr - '0');
 	}
-
-	delete mp10;
 
 	return newInt;
 }
 
 std::string MPInteger::description() const
 {
-	MPUInteger *copy = this->magnitude->copy();
-	const MPUInteger *mp10 = MPUInteger::initWithUInt32Value(10);
-
-	if (copy->isZero())
+	if (this->magnitude->isZero())
 	{
 		return "0";
 	}
 
+	MPUInteger *copy = this->magnitude->copy();
 	std::string desc = "";
 
 	while (!copy->isZero())
 	{
-		MPUInteger *remainder = copy->divide(mp10);
-
-		desc.push_back('0' + remainder->lowestBase10Digit());
-
-		delete remainder;
+		uint32_t remainder = copy->divideUInt32(10);
+		desc.push_back('0' + remainder);
 	}
 
 	delete copy;
-	delete mp10;
 
 	if (this->isSigned)
 		desc.push_back('-');
