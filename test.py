@@ -26,8 +26,8 @@ def tryOperation(a, b, op, expect):
 
 
 for i in range(0, testCount):
-	aBits = random.randint(0, maxBits)
-	bBits = random.randint(0, maxBits)
+	aBits = random.randint(1, maxBits)
+	bBits = random.randint(1, maxBits)
 
 	a = int(random.getrandbits(aBits))
 	b = int(random.getrandbits(bBits))
