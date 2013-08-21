@@ -310,7 +310,7 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 	if (this->isLessThan(x))
 	{
 		MPUInteger *remainder = new MPUInteger(this->digits);
-		this->digits = UInt32Vector::initWithSize(0);
+		this->digits = UInt32Vector::initWithSize(1);
 		return remainder;
 	}
 
@@ -334,10 +334,8 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 	// Since the dividend is UINT32_MAX, we know that the final cast will
 	// not lose any precision.
 	uint32_t norm = (uint32_t)((uint64_t)UINT32_MAX / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
-	//cerr << norm << std::endl;
 	remainder->multiplyUInt32(norm);
 	divisor->multiplyUInt32(norm);
-	//divisor->debug();
 
 	// Instead we'll loop on 0 <= j < quotientLength
 	for (size_t j = 0; j < quotientLength; ++j)
@@ -380,12 +378,13 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 		if (remainder->isLessThan(subtracted))
 		{
 			// D6: Add back
+			cerr << "Hit D6" << endl;
 			--q;
 
 			// Add the divisor
 			remainder->add(divisor);
 
-			// Truncate the carried item XXX not sure if needed
+			// Truncate the carried item XXX not sure if this is what Knuth was meaning
 			remainder->digits->setItem(remainder->digits->size() - 1, 0);
 			remainder->digits->discardLeadingZeros();
 		}
