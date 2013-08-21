@@ -2,6 +2,10 @@
 
 #include <cassert>
 
+// XXX remove
+#include <iostream>
+using namespace std;
+
 
 
 MPUInteger *MPUInteger::initWithUInt32Value(uint32_t value)
@@ -294,9 +298,113 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 		return MPUInteger::initWithUInt32Value(0);
 	}
 
-	MPUInteger *remainder;
+	// If the divisor consists of a single word then we can use our uint method
+	if (x->digits->size() == 1)
+	{
+		uint32_t rem = this->divideUInt32(x->digits->item(0));
 
-	assert(false);
+		return new MPUInteger(rem);
+	}
+
+	// If the divisor is greater than the dividend then we simply have this as the remainder
+	if (this->isLessThan(x))
+	{
+		MPUInteger *remainder = new MPUInteger(this->digits);
+		this->digits = UInt32Vector::initWithSize(0);
+		return remainder;
+	}
+
+	// We'll have to perform long division
+	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
+
+	const size_t dividendLength = this->digits->size();
+	const size_t divisorLength = x->digits->size();
+	const size_t quotientLength = dividendLength - divisorLength + 1;
+
+	// Create the working copies of the remainder and divisor
+	MPUInteger *remainder = new MPUInteger(this->digits);
+	MPUInteger *divisor = x->copy();
+
+	// Zero out this instance (note remainder has stolen our digits)
+	// We'll store the quotient in this instance
+	this->digits = UInt32Vector::initWithSize(quotientLength);
+
+	// D1: Normalize the numbers
+	// The awkward casting is to avoid the divisor overflowing.
+	// Since the dividend is UINT32_MAX, we know that the final cast will
+	// not lose any precision.
+	uint32_t norm = (uint32_t)((uint64_t)UINT32_MAX / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
+	//cerr << norm << std::endl;
+	remainder->multiplyUInt32(norm);
+	divisor->multiplyUInt32(norm);
+	//divisor->debug();
+
+	// Instead we'll loop on 0 <= j < quotientLength
+	for (size_t j = 0; j < quotientLength; ++j)
+	{
+		// D3: Estimate the quotient
+		// These are used to shorten the formulae below
+		// The number in the names specifies the offset from n
+		uint64_t u0 = remainder->digits->item(remainder->digits->size() - 1);
+		uint64_t u1 = remainder->digits->item(remainder->digits->size() - 2);
+		uint64_t u2 = remainder->digits->item(remainder->digits->size() - 3);
+		uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
+		uint64_t v2 = divisor->digits->item(divisor->digits->size() - 2);
+
+		uint32_t q;
+		uint64_t r;
+
+		// Calculate our guess
+		if (u0 == v1)
+		{
+			q = UINT32_MAX - 1;	
+			r = u0 + u1;
+		}
+		else
+		{
+			q = (uint32_t)((u0 * (uint64_t)UINT32_MAX + u1) / v1);
+			r = (u0 * (uint64_t)UINT32_MAX + u1) % v1;
+		}
+
+		// Correct our guess
+		while (r < UINT32_MAX && q * v2 > UINT32_MAX * r + u2)
+		{
+			--q;
+			r += v1;
+		}
+
+		// D4: Long divide subtract and multiply
+		MPUInteger *subtracted = divisor->copy();
+		subtracted->multiplyUInt32(q);
+
+		if (remainder->isLessThan(subtracted))
+		{
+			// D6: Add back
+			--q;
+
+			// Add the divisor
+			remainder->add(divisor);
+
+			// Truncate the carried item XXX not sure if needed
+			remainder->digits->setItem(remainder->digits->size() - 1, 0);
+			remainder->digits->discardLeadingZeros();
+		}
+		else
+		{
+			remainder->subtract(subtracted);
+		}
+
+		delete subtracted;
+
+		// D5: Set quotient digit
+		this->shiftLeft();
+		this->digits->setItem(0, q);
+	}
+
+	// D8: Unnormalize
+	remainder->divideUInt32(UINT32_MAX);
+
+	delete divisor;
 
 	return remainder;
 }
