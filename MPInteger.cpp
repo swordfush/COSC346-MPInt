@@ -168,9 +168,7 @@ MPInteger *MPInteger::divide(const MPInteger *x) const
 	// Handle the result of floored division where the result is negative
 	if (result->isSigned)
 	{
-		MPUInteger *mp1 = MPUInteger::initWithUInt32Value(1);
-		result->magnitude->add(mp1);
-		delete mp1;
+		result->magnitude->addUInt32(1);
 	}
 
 	return result;
