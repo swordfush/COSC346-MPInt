@@ -30,6 +30,9 @@ def tryOperation(a, b, op, expect):
 		print "Failed", a, op, b
 		print "\tExpected:", quote(expect)
 		print "\tGot:", quote(output)
+		sys.exit(0)
+	else:
+		print "Passed"
 
 
 for i in range(0, testCount):
@@ -42,6 +45,6 @@ for i in range(0, testCount):
 	tryOperation(a, b, "+", a + b)
 	tryOperation(a, b, "-", a - b)
 	tryOperation(a, b, "*", a * b)
-#if (b != 0):
-#		tryOperation(a, b, "/", a / b)
-#		tryOperation(a, b, "%", a % b)
+	if (b != 0):
+		tryOperation(a, b, "/", a / b)
+		tryOperation(a, b, "%", a % b)
