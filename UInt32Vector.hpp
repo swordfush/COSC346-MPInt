@@ -12,6 +12,7 @@ struct UInt32Vector
 	UInt32Vector *copy() const;
 
 	void growToSize(size_t size);
+	void discardLeadingZeros();
 
 	uint32_t item(size_t index) const;
 	void setItem(size_t index, uint32_t value);

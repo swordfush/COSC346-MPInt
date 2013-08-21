@@ -159,6 +159,8 @@ void MPUInteger::subtract(const MPUInteger *x)
 		assert(HIGH(value - xValue) == 0);
 		this->digits->setItem(i, (uint32_t)LOW(value - xValue));
 	}
+
+	this->digits->discardLeadingZeros();
 }
 
 void MPUInteger::subtractUInt32(uint32_t x)
@@ -177,6 +179,8 @@ void MPUInteger::subtractUInt32(uint32_t x)
 
 	assert(HIGH(value - xValue) == 0);
 	this->digits->setItem(0, (uint32_t)LOW(value - xValue));
+
+	this->digits->discardLeadingZeros();
 }
 
 // Adds LOW(value) at the index specified, and HIGH(value) to the next index
@@ -211,6 +215,14 @@ void MPUInteger::multiply(const MPUInteger *x)
 		MPUInteger *copy = this->copy();
 		this->multiply(copy);
 		delete copy;
+		return;
+	}
+
+	// In the case where this is zero, we can end up with many leading zeros from the multiplication algorithm used below -- we'll handle this case specially
+	if (this->isZero() || x->isZero())
+	{
+		delete this->digits;
+		this->digits = UInt32Vector::initWithSize(1);
 		return;
 	}
 
@@ -308,6 +320,8 @@ uint32_t MPUInteger::divideUInt32(uint32_t x)
 	}
 
 	delete copy;
+
+	this->digits->discardLeadingZeros();
 
 	return carry;
 }

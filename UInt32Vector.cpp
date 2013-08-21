@@ -57,6 +57,26 @@ void UInt32Vector::growToSize(size_t size)
 	}
 }
 
+static size_t highestNonZeroIndex(const UInt32Vector *vector)
+{
+	size_t size = vector->size();
+
+	for (size_t i = size - 1; i > 0; --i)
+	{
+		if (vector->item(i) != 0)
+		{
+			return i;
+		}
+	}
+
+	return 0;
+}
+
+void UInt32Vector::discardLeadingZeros()
+{
+	this->setSize(highestNonZeroIndex(this) + 1);
+}
+
 uint32_t UInt32Vector::item(size_t index) const
 {
 	assert(index < this->size());
