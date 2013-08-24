@@ -19,6 +19,8 @@ struct UInt32Vector
 
 	size_t size() const;
 
+	size_t highestNonZeroIndex() const;
+
 	void debug() const;
 
 

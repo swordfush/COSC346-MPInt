@@ -7,6 +7,8 @@
 using namespace std;
 
 
+#define BASE (uint64_t)UINT32_MAX
+
 
 MPUInteger *MPUInteger::initWithUInt32Value(uint32_t value)
 {
@@ -41,8 +43,8 @@ MPUInteger *MPUInteger::copy() const
 
 
 // TODO: Use bit masks instead
-#define LOW(x) ((x) % (uint64_t)UINT32_MAX)
-#define HIGH(x) ((x) / (uint64_t)UINT32_MAX)
+#define LOW(x) ((x) % BASE)
+#define HIGH(x) ((x) / BASE)
 
 
 void MPUInteger::add(const MPUInteger *x)
@@ -127,7 +129,7 @@ static void borrow(UInt32Vector *vector, size_t i)
 	if (nextValue == 0)
 	{
 		borrow(vector, i + 1);
-		nextValue = UINT32_MAX;
+		nextValue = (uint32_t)BASE;
 	}
 
 	vector->setItem(i+1, nextValue - 1);
@@ -157,7 +159,7 @@ void MPUInteger::subtract(const MPUInteger *x)
 		if (xValue > value)
 		{
 			borrow(this->digits, i);
-			value += (uint64_t)UINT32_MAX;
+			value += BASE;
 		}
 
 		assert(HIGH(value - xValue) == 0);
@@ -178,7 +180,7 @@ void MPUInteger::subtractUInt32(uint32_t x)
 	if (xValue > value)
 	{
 		borrow(this->digits, 0);
-		value += (uint64_t)UINT32_MAX;
+		value += BASE;
 	}
 
 	assert(HIGH(value - xValue) == 0);
@@ -332,8 +334,8 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
 
 	const size_t dividendLength = this->digits->size();
-	const size_t divisorLength = x->digits->size();
-	const size_t quotientLength = dividendLength - divisorLength + 1;
+	const size_t n = x->digits->size();
+	const size_t m = dividendLength - n;
 
 	// Create the working copies of the remainder and divisor
 	MPUInteger *remainder = new MPUInteger(this->digits);
@@ -341,22 +343,24 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 	// Zero out this instance (note remainder has stolen our digits)
 	// We'll store the quotient in this instance
-	this->digits = UInt32Vector::initWithSize(quotientLength);
+	this->digits = UInt32Vector::initWithSize(m + 1);
 
 	// D1: Normalize the numbers
 	// The awkward casting is to avoid the divisor overflowing.
-	// Since the dividend is UINT32_MAX and the divisor is >= 0, we know that the final cast will
+	// Since the dividend is UINT32_MAX and the divisor is > 0, we know that the final cast will
 	// not lose any precision.
-	uint32_t norm = (uint32_t)((uint64_t)UINT32_MAX / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
+	uint32_t norm = (uint32_t)(BASE / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
 	remainder->multiplyUInt32(norm);
 	divisor->multiplyUInt32(norm);
 
 	// We need to introduce u0, so we'll grow the remainder's vector
 	remainder->digits->growToSize(dividendLength + 1);
 
-	// Instead we'll loop on 0 <= j < quotientLength
-	for (size_t j = 0; j < quotientLength; ++j)
+	for (size_t j = 0; j <= m; ++j)
 	{
+		cerr << "Starting remainder:" << endl;
+		remainder->debug();
+
 		// D3: Estimate the quotient
 		// These are used to shorten the formulae below
 		// The number in the names specifies the offset from n; i.e. u1 = u_{n-1}
@@ -374,17 +378,17 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 		// Calculate our guess
 		if (u0 == v1)
 		{
-			q = UINT32_MAX - 1;	
+			q = BASE - 1;	
 			r = u0 + u1;
 		}
 		else
 		{
-			q = (uint32_t)((u0 * (uint64_t)UINT32_MAX + u1) / v1);
-			r = (u0 * (uint64_t)UINT32_MAX + u1) % v1;
+			q = (uint32_t)((u0 * BASE + u1) / v1);
+			r = (u0 * BASE + u1) % v1;
 		}
 
 		// Correct our guess
-		while (r < UINT32_MAX && q * v2 > UINT32_MAX * r + u2)
+		while (r < BASE && q * v2 > BASE * r + u2)
 		{
 			--q;
 			r += v1;
@@ -402,10 +406,16 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 			// Add the divisor
 			remainder->add(divisor);
+
+			// XXX does there need to be explicit truncation here?
 		}
 		else
 		{
+			// Continue D4
 			remainder->subtract(subtracted);
+			cerr << "q = " << q << ", subtracted: " << endl;
+			subtracted->debug();
+			cerr << endl;
 		}
 
 		delete subtracted;
@@ -413,12 +423,19 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 		// D5: Set quotient digit
 		this->shiftLeft();
 		this->digits->setItem(0, q);
+
+		cerr << "Ending remainder:" << endl;
+		remainder->debug();
+		cerr << endl;
 	}
 
 	// D8: Unnormalize
-	remainder->divideUInt32(UINT32_MAX);
+	remainder->divideUInt32((uint32_t)BASE);
 
 	delete divisor;
+
+	this->digits->discardLeadingZeros();
+	remainder->digits->discardLeadingZeros();
 
 	return remainder;
 }
@@ -435,7 +452,7 @@ uint32_t MPUInteger::divideUInt32(uint32_t x)
 
 	for (size_t i = 0; i < copy->digits->size(); ++i)
 	{
-		temp = carry * UINT32_MAX + copy->digits->item(last - i);
+		temp = carry * BASE + copy->digits->item(last - i);
 
 		this->digits->setItem(last - i, temp / x);
 		carry = temp % x;
@@ -449,26 +466,10 @@ uint32_t MPUInteger::divideUInt32(uint32_t x)
 }
 
 
-
-static size_t highestNonZeroIndex(const UInt32Vector *vector)
-{
-	size_t size = vector->size();
-
-	for (size_t i = size - 1; i > 0; --i)
-	{
-		if (vector->item(i) != 0)
-		{
-			return i;
-		}
-	}
-
-	return 0;
-}
-
 bool MPUInteger::equals(const MPUInteger *x) const
 {
-	size_t highest = highestNonZeroIndex(this->digits);
-	size_t xHighest = highestNonZeroIndex(x->digits);
+	size_t highest = this->digits->highestNonZeroIndex();
+	size_t xHighest = x->digits->highestNonZeroIndex();
 
 	if (highest != xHighest)
 	{
@@ -488,8 +489,8 @@ bool MPUInteger::equals(const MPUInteger *x) const
 
 bool MPUInteger::isLessThan(const MPUInteger *x) const
 {
-	size_t highest = highestNonZeroIndex(this->digits);
-	size_t xHighest = highestNonZeroIndex(x->digits);
+	size_t highest = this->digits->highestNonZeroIndex();
+	size_t xHighest = x->digits->highestNonZeroIndex();
 
 	if (highest != xHighest)
 	{
@@ -529,47 +530,10 @@ bool MPUInteger::isLessThanUInt32(uint32_t x) const
 	return this->digits->item(0) < x;
 }
 
-
-size_t MPUInteger::bitSize() const
-{
-	return 32 * this->digits->size();
-}
-
-int MPUInteger::bit(size_t index) const
-{
-	size_t uintIndex = index / 32;
-	uint32_t mask = ((uint32_t)1) << (index % 32);
-
-	return (this->digits->item(uintIndex) & mask) >> index;
-}
-
-void MPUInteger::setBit(size_t index, int value)
-{
-	assert(value <= 1);
-
-	size_t uintIndex = index / 32;
-	uint32_t mask = ((uint32_t)1) << (index % 32); 
-
-	uint32_t uint = this->digits->item(uintIndex);
-
-	if (value)
-	{
-		uint |= mask;
-	}
-	else
-	{
-		uint &= ~mask;
-	}
-	
-	this->digits->setItem(uintIndex, uint);
-}
-
 void MPUInteger::shiftLeft()
 {
-	// A single shift left can be seen as multiplication by 2
-	MPUInteger *mp2 = new MPUInteger(2);
-	this->multiply(mp2);
-	delete mp2;
+	// A single shift left can be seen as multiplication by UINT32_MAX
+	this->multiplyUInt32((uint32_t)BASE);
 }
 
 void MPUInteger::debug() const
