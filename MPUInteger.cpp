@@ -359,13 +359,15 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 	{
 		// D3: Estimate the quotient
 		// These are used to shorten the formulae below
-		// The number in the names specifies the offset from n
-		uint64_t u0 = remainder->digits->item(remainder->digits->size() - 1);
-		uint64_t u1 = remainder->digits->item(remainder->digits->size() - 2);
-		uint64_t u2 = remainder->digits->item(remainder->digits->size() - 3);
-		uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
-		uint64_t v2 = divisor->digits->item(divisor->digits->size() - 2);
+		// The number in the names specifies the offset from n; i.e. u1 = u_{n-1}
+		// This is in the remainder, in terms of the dividend it is u_{j-1}
+		const uint64_t u0 = remainder->digits->item(remainder->digits->size() - 1);
+		const uint64_t u1 = remainder->digits->item(remainder->digits->size() - 2);
+		const uint64_t u2 = remainder->digits->item(remainder->digits->size() - 3);
+		const uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
+		const uint64_t v2 = divisor->digits->item(divisor->digits->size() - 2);
 
+		// The guess at the quotient digit
 		uint32_t q;
 		uint64_t r;
 
@@ -400,10 +402,6 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 			// Add the divisor
 			remainder->add(divisor);
-
-			// Truncate the carried item XXX not sure if this is what Knuth was meaning
-			remainder->digits->setItem(remainder->digits->size() - 1, 0);
-			remainder->digits->discardLeadingZeros();
 		}
 		else
 		{
