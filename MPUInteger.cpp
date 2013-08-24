@@ -285,6 +285,20 @@ bool MPUInteger::isZero() const
 	return true;
 }
 
+// XXX remove after testing
+void checkDivision(const MPUInteger *x, const MPUInteger *y, const MPUInteger *quotient, const MPUInteger *remainder)
+{
+	// Check that x = y * quotient + remainder
+	MPUInteger *scratch = quotient->copy();
+	scratch->multiply(y);
+	scratch->add(remainder);
+	assert(x->equals(scratch));
+
+
+	
+
+}
+
 MPUInteger *MPUInteger::divide(const MPUInteger *x)
 {
 	assert(!x->isZero());
@@ -331,11 +345,14 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 	// D1: Normalize the numbers
 	// The awkward casting is to avoid the divisor overflowing.
-	// Since the dividend is UINT32_MAX, we know that the final cast will
+	// Since the dividend is UINT32_MAX and the divisor is >= 0, we know that the final cast will
 	// not lose any precision.
 	uint32_t norm = (uint32_t)((uint64_t)UINT32_MAX / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
 	remainder->multiplyUInt32(norm);
 	divisor->multiplyUInt32(norm);
+
+	// We need to introduce u0, so we'll grow the remainder's vector
+	remainder->digits->growToSize(dividendLength + 1);
 
 	// Instead we'll loop on 0 <= j < quotientLength
 	for (size_t j = 0; j < quotientLength; ++j)
@@ -448,6 +465,27 @@ static size_t highestNonZeroIndex(const UInt32Vector *vector)
 	}
 
 	return 0;
+}
+
+bool MPUInteger::equals(const MPUInteger *x) const
+{
+	size_t highest = highestNonZeroIndex(this->digits);
+	size_t xHighest = highestNonZeroIndex(x->digits);
+
+	if (highest != xHighest)
+	{
+		return false;
+	}
+
+	for (size_t i = 0; i < highest; ++i)
+	{
+		if (this->digits->item(i) != x->digits->item(i))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool MPUInteger::isLessThan(const MPUInteger *x) const

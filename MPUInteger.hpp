@@ -17,6 +17,8 @@ struct MPUInteger
 	void multiply(const MPUInteger *x);
 	MPUInteger *divide(const MPUInteger *x);
 
+	bool equals(const MPUInteger *x) const;
+
 	bool isLessThan(const MPUInteger *x) const;
 	bool isLessThanUInt32(uint32_t x) const;
 
