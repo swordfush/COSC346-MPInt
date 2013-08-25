@@ -24,8 +24,6 @@ struct MPInteger
 
 	bool isLessThan(const MPInteger *x) const;
 
-	void debug() const;
-
 	private:
 		MPInteger(MPUInteger *magnitude, bool isSigned);
 

@@ -10,7 +10,8 @@ UInt32Vector::UInt32Vector(size_t size)
 
 	this->count = 0;
 	this->items = NULL;
-	this->setSize(size); // Uses realloc, which on a null pointer behaves like malloc 
+	// Uses realloc, which on a null pointer behaves like malloc 
+	this->setSize(size);
 }
 
 UInt32Vector::~UInt32Vector()
@@ -90,12 +91,4 @@ void UInt32Vector::setItem(size_t index, uint32_t value)
 size_t UInt32Vector::size() const
 {
 	return this->count;
-}
-
-void UInt32Vector::debug() const
-{
-	for (size_t i = 0; i < this->size(); ++i)
-	{
-		std::cerr << this->item(i) << "\n";
-	}
 }

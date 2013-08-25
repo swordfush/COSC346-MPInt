@@ -47,7 +47,7 @@ int main(int argc, const char **argv)
 	}
 
 	cout << result->description() << std::endl;
-	result->debug();
+
 	delete result;
 	delete a;
 	delete b;

@@ -21,18 +21,22 @@ def quote(string):
 	return "\"{0}\"".format(string)
 
 def tryOperation(a, b, op, expect):
-#print "Trying operation {0} {1} {2} -- Expecting {3}".format(a, op, b, expect)
 	output = subprocess.check_output(["./test", str(a), op, str(b)], stderr=subprocess.STDOUT)
 
-	expect = "{0}\n{1}".format(expect, debug(expect))
+	internal = debug(expect)
+	expect = "{0}\n".format(expect)
 
 	if output != expect:
 		print "Failed", a, op, b
 		print "\tExpected:", quote(expect)
 		print "\tGot:", quote(output)
+		print "\tExpected internal representation:"
+		print internal
+		print "\tReceived internal representation:"
+		print debug(int(output[:-1]))
 		sys.exit(0)
 
-for i in range(0, testCount):
+for i in xrange(0, testCount):
 	aBits = random.randint(1, maxBits)
 	bBits = random.randint(1, maxBits)
 
@@ -42,7 +46,7 @@ for i in range(0, testCount):
 	tryOperation(a, b, "+", a + b)
 	tryOperation(a, b, "-", a - b)
 	tryOperation(a, b, "*", a * b)
-	if (b != 0):
+	if b != 0:
 		tryOperation(a, b, "/", a / b)
-#tryOperation(a, b, "%", a % b)
-	print "Passed"
+		tryOperation(a, b, "%", a % b)
+	print "Passed", i+1

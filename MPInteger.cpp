@@ -208,8 +208,3 @@ bool MPInteger::isLessThan(const MPInteger *x) const
 		return this->isSigned;
 	}
 }
-
-void MPInteger::debug() const
-{
-	this->magnitude->debug();
-}

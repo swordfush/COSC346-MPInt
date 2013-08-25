@@ -2,10 +2,6 @@
 
 #include <cassert>
 
-// XXX remove
-#include <iostream>
-using namespace std;
-
 
 #define BASE (uint64_t)UINT32_MAX
 
@@ -15,13 +11,25 @@ MPUInteger *MPUInteger::initWithUInt32Value(uint32_t value)
 	return new MPUInteger(value);
 }
 
+MPUInteger *MPUInteger::initWithStolenDigits(MPUInteger *x)
+{
+	UInt32Vector *digits = x->digits;
+	x->digits = NULL;
+
+	return new MPUInteger(digits);
+}
+
+MPUInteger *MPUInteger::initWithZeroDigits(size_t n)
+{
+	return new MPUInteger(UInt32Vector::initWithSize(n));
+}
+
 MPUInteger::MPUInteger(uint32_t value)
 {
 	digits = UInt32Vector::initWithSize(1);
 	digits->setItem(0, value);
 }
 
-// Claims ownership of vector
 MPUInteger::MPUInteger(UInt32Vector *vector)
 {
 	digits = vector;
@@ -75,7 +83,7 @@ void MPUInteger::add(const MPUInteger *x)
 		uint64_t result = (uint64_t)this->digits->item(i)
 			+ (uint64_t)x->digits->item(i)
 			+ carry;
-		this->digits->setItem(i, (uint32_t)LOW(result));
+		this->digits->setItem(i, LOW(result));
 		carry = HIGH(result);
 
 		assert(carry <= 1);
@@ -87,7 +95,7 @@ void MPUInteger::add(const MPUInteger *x)
 		this->digits->growToSize(i + 1);
 
 		uint64_t result = carry + (uint64_t)this->digits->item(i);
-		this->digits->setItem(i, (uint32_t)LOW(result));
+		this->digits->setItem(i, LOW(result));
 		carry = HIGH(result);
 
 		assert(carry <= 1);
@@ -102,13 +110,12 @@ void MPUInteger::addUInt32(uint32_t x)
 
 	size_t i = 0;
 	
-	// We may still have carry, so we continue to add that
 	while (carry > 0)
 	{
 		this->digits->growToSize(i + 1);
 
 		uint64_t result = carry + (uint64_t)this->digits->item(i);
-		this->digits->setItem(i, (uint32_t)LOW(result));
+		this->digits->setItem(i, LOW(result));
 		carry = HIGH(result);
 
 		assert(carry <= 1);
@@ -122,7 +129,7 @@ void MPUInteger::addUInt32(uint32_t x)
 // It also assumes that it will be able to borrow eventually
 static void borrow(UInt32Vector *vector, size_t i)
 {
-	uint32_t nextValue = vector->item(i+1);
+	uint32_t nextValue = vector->item(i + 1);
 
 	// If we are unable to borrow from the next index, recursively borrow 
 	// from higher indices
@@ -132,7 +139,7 @@ static void borrow(UInt32Vector *vector, size_t i)
 		nextValue = (uint32_t)BASE;
 	}
 
-	vector->setItem(i+1, nextValue - 1);
+	vector->setItem(i + 1, nextValue - 1);
 }
 
 void MPUInteger::subtract(const MPUInteger *x)
@@ -184,7 +191,7 @@ void MPUInteger::subtractUInt32(uint32_t x)
 	}
 
 	assert(HIGH(value - xValue) == 0);
-	this->digits->setItem(0, (uint32_t)LOW(value - xValue));
+	this->digits->setItem(0, LOW(value - xValue));
 
 	this->digits->discardLeadingZeros();
 }
@@ -205,7 +212,6 @@ static void addAtIndex(UInt32Vector *vector, size_t index, uint64_t value)
 	{
 		++index;
 
-		// If we still have carry when we're at the last index we'll need to grow
 		vector->growToSize(index + 1);
 
 		result = carry + (uint64_t)vector->item(index);
@@ -247,7 +253,8 @@ void MPUInteger::multiply(const MPUInteger *x)
 
 		for (size_t j = 0; j < y->digits->size(); ++j)
 		{
-			uint64_t result = (uint64_t)x->digits->item(i) * (uint64_t)y->digits->item(j);
+			uint64_t result = (uint64_t)x->digits->item(i) 
+				* (uint64_t)y->digits->item(j);
 
 			addAtIndex(this->digits, i + j, result);
 		}
@@ -288,20 +295,6 @@ bool MPUInteger::isZero() const
 	return true;
 }
 
-// XXX remove after testing
-void checkDivision(const MPUInteger *x, const MPUInteger *y, const MPUInteger *quotient, const MPUInteger *remainder)
-{
-	// Check that x = y * quotient + remainder
-	MPUInteger *scratch = quotient->copy();
-	scratch->multiply(y);
-	scratch->add(remainder);
-	assert(x->equals(scratch));
-
-
-	
-
-}
-
 MPUInteger *MPUInteger::divide(const MPUInteger *x)
 {
 	assert(!x->isZero());
@@ -322,7 +315,7 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 		return new MPUInteger(rem);
 	}
-	if (this->isLessThan(x))
+	else if (this->isLessThan(x))
 	{
 		// If the divisor is greater than the dividend then we simply have this as the remainder
 		MPUInteger *remainder = new MPUInteger(this->digits);
@@ -334,6 +327,39 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 		// We'll have to perform long division
 		return this->longDivide(x);
 	}
+}
+
+MPUInteger *MPUInteger::longDivide(const MPUInteger *divisor)
+{
+	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
+
+	// Obtain the factor to normalize with
+	uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
+	uint32_t norm = (uint32_t)(BASE / (v1 + 1)); // Cast will always work
+
+	// The normalized dividend with an added digit (u_0)
+	MPUInteger *normalizedDividend = new MPUInteger(this->digits); 
+	normalizedDividend->digits->growToSize(normalizedDividend->digits->size() + 1);
+	normalizedDividend->multiplyUInt32(norm);
+
+	// The normalized divisor
+	MPUInteger *normalizedDivisor = divisor->copy();
+	normalizedDivisor->multiplyUInt32(norm);
+
+	// D2 through 7
+	MPUInteger *remainder = this->normalizedLongDivide(normalizedDividend,
+			normalizedDivisor);
+
+	// D8: Unnormalize
+	remainder->divideUInt32((uint32_t)BASE);
+
+	delete normalizedDividend;
+	delete normalizedDivisor;
+
+	this->digits->discardLeadingZeros();
+	remainder->digits->discardLeadingZeros();
+
+	return remainder;
 }
 
 uint32_t MPUInteger::estimateQuotientDigit(const MPUInteger *u, 
@@ -371,16 +397,6 @@ uint32_t MPUInteger::estimateQuotientDigit(const MPUInteger *u,
 	return q;
 }
 
-// XXX remove
-static void debug(const MPUInteger *x, const char *str)
-{
-	/*
-	cerr << str << endl;
-	x->debug();
-	cerr << endl;
-	*/
-}
-
 /**
  * Performs long division on the normalized multi-precision integers provided. 
  * It is assumed that this instance's digits have either been freed or stolen.
@@ -409,10 +425,6 @@ MPUInteger *MPUInteger::normalizedLongDivide(const MPUInteger *dividend,
 		remainder->digits->setItem(i, dividend->digits->item(offset + i));
 	}
 
-	::debug(dividend, "Dividend:");
-	::debug(divisor, "Divisor:");
-	::debug(remainder, "Initial remainder:");
-
 	// We'll create this alias to make things clear
 	MPUInteger *quotient = this;
 
@@ -422,9 +434,9 @@ MPUInteger *MPUInteger::normalizedLongDivide(const MPUInteger *dividend,
 	{
 		// Bring the next digit down
 		remainder->shiftLeft();
-		uint32_t nextDigit = dividend->digits->item(dividend->digits->size() - n - j - 1);
+		size_t nextDigitIndex = dividend->digits->size() - n - j - 1;
+		uint32_t nextDigit = dividend->digits->item(nextDigitIndex);
 		remainder->digits->setItem(0, nextDigit);
-		::debug(remainder, "Remainder after bringing next digit down:");
 
 		// D3: Estimate the quotient
 		uint32_t q = estimateQuotientDigit(remainder, divisor);
@@ -436,13 +448,11 @@ MPUInteger *MPUInteger::normalizedLongDivide(const MPUInteger *dividend,
 		if (remainder->isLessThan(subtracted))
 		{
 			// D6: Add back
-			cerr << "Hit D6" << endl;
 			--q;
 
 			// Add the divisor
 			remainder->add(divisor);
 
-			// XXX does there need to be explicit truncation here?
 			// Truncate the added digit
 			remainder->digits->setItem(remainder->digits->size() - 1, 0);
 			remainder->digits->discardLeadingZeros();
@@ -458,47 +468,11 @@ MPUInteger *MPUInteger::normalizedLongDivide(const MPUInteger *dividend,
 		// D5: Set quotient digit
 		quotient->shiftLeft();
 		quotient->digits->setItem(0, q);
-		::debug(quotient, "Quotient");
-
-		::debug(remainder, "Remainder after subtraction:");
-
 	}
 
 	return remainder;
 }
 
-MPUInteger *MPUInteger::longDivide(const MPUInteger *divisor)
-{
-	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
-
-	// Obtain the factor to normalize with
-	uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
-	uint32_t norm = (uint32_t)(BASE / (v1 + 1)); // Cast will always work
-
-	// The normalized dividend with an added digit (u_0)
-	MPUInteger *normalizedDividend = new MPUInteger(this->digits); 
-	normalizedDividend->digits->growToSize(normalizedDividend->digits->size() + 1);
-	normalizedDividend->multiplyUInt32(norm);
-
-	// The normalized divisor
-	MPUInteger *normalizedDivisor = divisor->copy();
-	normalizedDivisor->multiplyUInt32(norm);
-
-	// D2 through 7
-	MPUInteger *remainder = this->normalizedLongDivide(normalizedDividend,
-			normalizedDivisor);
-
-	// D8: Unnormalize
-	remainder->divideUInt32((uint32_t)BASE);
-
-	delete normalizedDividend;
-	delete normalizedDivisor;
-
-	this->digits->discardLeadingZeros();
-	remainder->digits->discardLeadingZeros();
-
-	return remainder;
-}
 
 uint32_t MPUInteger::divideUInt32(uint32_t x)
 {
@@ -595,11 +569,3 @@ void MPUInteger::shiftLeft()
 	// A single shift left can be seen as multiplication by UINT32_MAX
 	this->multiplyUInt32((uint32_t)BASE);
 }
-
-void MPUInteger::debug() const
-{
-	this->digits->debug();
-}
-
-
-
