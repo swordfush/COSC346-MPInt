@@ -351,7 +351,7 @@ MPUInteger *MPUInteger::longDivide(const MPUInteger *divisor)
 			normalizedDivisor);
 
 	// D8: Unnormalize
-	remainder->divideUInt32((uint32_t)BASE);
+	remainder->divideUInt32(norm);
 
 	delete normalizedDividend;
 	delete normalizedDivisor;

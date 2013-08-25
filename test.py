@@ -50,3 +50,5 @@ for i in xrange(0, testCount):
 		tryOperation(a, b, "/", a / b)
 		tryOperation(a, b, "%", a % b)
 	print "Passed", i+1
+	print "\t", a
+	print "\t", b
