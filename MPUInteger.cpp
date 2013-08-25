@@ -224,7 +224,8 @@ void MPUInteger::multiply(const MPUInteger *x)
 		return;
 	}
 
-	// In the case where this is zero, we can end up with many leading zeros from the multiplication algorithm used below -- we'll handle this case specially
+	// In the case where this is zero, we can end up with many leading zeros 
+	// using the algorithm below -- we'll handle this case specially
 	if (this->isZero() || x->isZero())
 	{
 		delete this->digits;
@@ -307,92 +308,126 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 
 	if (this == x)
 	{
+		// x / x = 1 r 0
 		delete this->digits;
 		this->digits = UInt32Vector::initWithSize(1);
 		this->digits->setItem(0, 1);
 
 		return MPUInteger::initWithUInt32Value(0);
 	}
-
-	// If the divisor consists of a single word then we can use our uint method
-	if (x->digits->size() == 1)
+	else if (x->digits->size() == 1)
 	{
+		// If the divisor consists of a single digit we have the fast algorithm
 		uint32_t rem = this->divideUInt32(x->digits->item(0));
 
 		return new MPUInteger(rem);
 	}
-
-	// If the divisor is greater than the dividend then we simply have this as the remainder
 	if (this->isLessThan(x))
 	{
+		// If the divisor is greater than the dividend then we simply have this as the remainder
 		MPUInteger *remainder = new MPUInteger(this->digits);
 		this->digits = UInt32Vector::initWithSize(1);
 		return remainder;
 	}
+	else
+	{
+		// We'll have to perform long division
+		return this->longDivide(x);
+	}
+}
 
-	// We'll have to perform long division
-	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
+uint32_t MPUInteger::estimateQuotientDigit(const MPUInteger *u, 
+		const MPUInteger *v)
+{
+	const uint64_t u0 = u->digits->item(u->digits->size() - 1);
+	const uint64_t u1 = u->digits->item(u->digits->size() - 2);
+	const uint64_t u2 = u->digits->item(u->digits->size() - 3);
+	const uint64_t v1 = v->digits->item(v->digits->size() - 1);
+	const uint64_t v2 = v->digits->item(v->digits->size() - 2);
 
-	const size_t dividendLength = this->digits->size();
-	const size_t n = x->digits->size();
-	const size_t m = dividendLength - n;
+	// The guess at the quotient digit
+	uint32_t q;
+	uint64_t r;
 
-	// Create the working copies of the remainder and divisor
-	MPUInteger *remainder = new MPUInteger(this->digits);
-	MPUInteger *divisor = x->copy();
+	// Calculate our guess
+	if (u0 == v1)
+	{
+		q = BASE - 1;	
+		r = u0 + u1;
+	}
+	else
+	{
+		q = (uint32_t)((u0 * BASE + u1) / v1);
+		r = (u0 * BASE + u1) % v1;
+	}
 
-	// Zero out this instance (note remainder has stolen our digits)
-	// We'll store the quotient in this instance
-	this->digits = UInt32Vector::initWithSize(m + 1);
+	// Correct our guess
+	while (r < BASE && q * v2 > BASE * r + u2)
+	{
+		--q;
+		r += v1;
+	}
 
-	// D1: Normalize the numbers
-	// The awkward casting is to avoid the divisor overflowing.
-	// Since the dividend is UINT32_MAX and the divisor is > 0, we know that the final cast will
-	// not lose any precision.
-	uint32_t norm = (uint32_t)(BASE / ((uint64_t)x->digits->item(x->digits->size() - 1) + 1));
-	remainder->multiplyUInt32(norm);
-	divisor->multiplyUInt32(norm);
+	return q;
+}
 
-	// We need to introduce u0, so we'll grow the remainder's vector
-	remainder->digits->growToSize(dividendLength + 1);
+// XXX remove
+static void debug(const MPUInteger *x, const char *str)
+{
+	/*
+	cerr << str << endl;
+	x->debug();
+	cerr << endl;
+	*/
+}
+
+/**
+ * Performs long division on the normalized multi-precision integers provided. 
+ * It is assumed that this instance's digits have either been freed or stolen.
+ * The quotient of the division is placed into this instance.
+ *
+ * @param dividend The dividend. It must have a leading zero digit u_0 as 
+ *  described by Knuth.
+ * @param divisor The divisor.
+ * @return The remainder of the division. 
+ *  Note that this will still be normalized.
+ */
+MPUInteger *MPUInteger::normalizedLongDivide(const MPUInteger *dividend, 
+		const MPUInteger *divisor)
+{
+	const size_t n = divisor->digits->size();
+	// len(u) = m + n + 1 => m = len(u) - n - 1
+	const size_t m = dividend->digits->size() - n - 1;
+
+	MPUInteger *remainder = new MPUInteger(UInt32Vector::initWithSize(divisor->digits->size() + 1));
+
+	// Copy digits u_0 ... u_n-1 into the remainder
+	// u_n will be copied when the loop starts
+	for (size_t i = 0; i < n; ++i)
+	{
+		const size_t offset = dividend->digits->size() - n;
+		remainder->digits->setItem(i, dividend->digits->item(offset + i));
+	}
+
+	::debug(dividend, "Dividend:");
+	::debug(divisor, "Divisor:");
+	::debug(remainder, "Initial remainder:");
+
+	// We'll create this alias to make things clear
+	MPUInteger *quotient = this;
+
+	quotient->digits = UInt32Vector::initWithSize(m + 1);
 
 	for (size_t j = 0; j <= m; ++j)
 	{
-		cerr << "Starting remainder:" << endl;
-		remainder->debug();
+		// Bring the next digit down
+		remainder->shiftLeft();
+		uint32_t nextDigit = dividend->digits->item(dividend->digits->size() - n - j - 1);
+		remainder->digits->setItem(0, nextDigit);
+		::debug(remainder, "Remainder after bringing next digit down:");
 
 		// D3: Estimate the quotient
-		// These are used to shorten the formulae below
-		// The number in the names specifies the offset from n; i.e. u1 = u_{n-1}
-		// This is in the remainder, in terms of the dividend it is u_{j-1}
-		const uint64_t u0 = remainder->digits->item(remainder->digits->size() - 1);
-		const uint64_t u1 = remainder->digits->item(remainder->digits->size() - 2);
-		const uint64_t u2 = remainder->digits->item(remainder->digits->size() - 3);
-		const uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
-		const uint64_t v2 = divisor->digits->item(divisor->digits->size() - 2);
-
-		// The guess at the quotient digit
-		uint32_t q;
-		uint64_t r;
-
-		// Calculate our guess
-		if (u0 == v1)
-		{
-			q = BASE - 1;	
-			r = u0 + u1;
-		}
-		else
-		{
-			q = (uint32_t)((u0 * BASE + u1) / v1);
-			r = (u0 * BASE + u1) % v1;
-		}
-
-		// Correct our guess
-		while (r < BASE && q * v2 > BASE * r + u2)
-		{
-			--q;
-			r += v1;
-		}
+		uint32_t q = estimateQuotientDigit(remainder, divisor);
 
 		// D4: Long divide subtract and multiply
 		MPUInteger *subtracted = divisor->copy();
@@ -408,31 +443,56 @@ MPUInteger *MPUInteger::divide(const MPUInteger *x)
 			remainder->add(divisor);
 
 			// XXX does there need to be explicit truncation here?
+			// Truncate the added digit
+			remainder->digits->setItem(remainder->digits->size() - 1, 0);
+			remainder->digits->discardLeadingZeros();
 		}
 		else
 		{
 			// Continue D4
 			remainder->subtract(subtracted);
-			cerr << "q = " << q << ", subtracted: " << endl;
-			subtracted->debug();
-			cerr << endl;
 		}
 
 		delete subtracted;
 
 		// D5: Set quotient digit
-		this->shiftLeft();
-		this->digits->setItem(0, q);
+		quotient->shiftLeft();
+		quotient->digits->setItem(0, q);
+		::debug(quotient, "Quotient");
 
-		cerr << "Ending remainder:" << endl;
-		remainder->debug();
-		cerr << endl;
+		::debug(remainder, "Remainder after subtraction:");
+
 	}
+
+	return remainder;
+}
+
+MPUInteger *MPUInteger::longDivide(const MPUInteger *divisor)
+{
+	// The following method is the one specified by Knuth in The Art of Computer Programming, Volume 2.
+
+	// Obtain the factor to normalize with
+	uint64_t v1 = divisor->digits->item(divisor->digits->size() - 1);
+	uint32_t norm = (uint32_t)(BASE / (v1 + 1)); // Cast will always work
+
+	// The normalized dividend with an added digit (u_0)
+	MPUInteger *normalizedDividend = new MPUInteger(this->digits); 
+	normalizedDividend->digits->growToSize(normalizedDividend->digits->size() + 1);
+	normalizedDividend->multiplyUInt32(norm);
+
+	// The normalized divisor
+	MPUInteger *normalizedDivisor = divisor->copy();
+	normalizedDivisor->multiplyUInt32(norm);
+
+	// D2 through 7
+	MPUInteger *remainder = this->normalizedLongDivide(normalizedDividend,
+			normalizedDivisor);
 
 	// D8: Unnormalize
 	remainder->divideUInt32((uint32_t)BASE);
 
-	delete divisor;
+	delete normalizedDividend;
+	delete normalizedDivisor;
 
 	this->digits->discardLeadingZeros();
 	remainder->digits->discardLeadingZeros();

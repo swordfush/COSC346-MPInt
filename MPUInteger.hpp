@@ -35,12 +35,11 @@ struct MPUInteger
 		MPUInteger(uint32_t value);
 		MPUInteger(UInt32Vector *vector);
 
-		size_t bitSize() const;
-		int bit(size_t index) const;
-		void setBit(size_t index, int value);
+		MPUInteger *longDivide(const MPUInteger *divisor);
+		MPUInteger *normalizedLongDivide(const MPUInteger *dividend, const MPUInteger *divisor);
+		static uint32_t estimateQuotientDigit(const MPUInteger *u, const MPUInteger *v);
 
 		void shiftLeft();
-
 
 		UInt32Vector *digits;
 
