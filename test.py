@@ -3,7 +3,7 @@ import sys
 import random
 
 testCount = int(sys.argv[1])
-maxBits = 32 * 5
+maxBits = 32 * 50
 
 def debug(num):
 	if num < 0:
@@ -33,7 +33,7 @@ def tryOperation(a, b, op, expect):
 		print debug(output)
 		sys.exit(0)
 
-for i in xrange(0, testCount):
+for i in xrange(1, testCount + 1):
 	aBits = random.randint(1, maxBits)
 	bBits = random.randint(1, maxBits)
 
@@ -51,6 +51,8 @@ for i in xrange(0, testCount):
 	if b != 0:
 		tryOperation(a, b, "/", a / b)
 		tryOperation(a, b, "%", a % b)
-	print "Passed", i+1
-	print "\t", a
-	print "\t", b
+	if i % 10000 == 0:
+		print "Passed", i
+#print "\t", a
+#print "\t", b
+#print

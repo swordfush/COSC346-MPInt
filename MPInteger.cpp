@@ -7,7 +7,7 @@
 
 MPInteger *MPInteger::initWithString(const char *str)
 {
-	MPInteger *newInt = new MPInteger(MPUInteger::initWithUInt32Value(0), false);
+	MPInteger *newInt = new MPInteger(MPMagnitude::initWithUInt32Value(0), false);
 
 	size_t i = 0;
 	const size_t length = strlen(str);
@@ -42,7 +42,7 @@ std::string MPInteger::description() const
 		return "0";
 	}
 
-	MPUInteger *copy = this->magnitude->copy();
+	MPMagnitude *copy = this->magnitude->copy();
 	std::string desc = "";
 
 	while (!copy->isZero())
@@ -62,7 +62,7 @@ std::string MPInteger::description() const
 }
 
 
-MPInteger::MPInteger(MPUInteger *magnitude, bool isSigned)
+MPInteger::MPInteger(MPMagnitude *magnitude, bool isSigned)
 {
 	this->magnitude = magnitude;
 	this->isSigned = isSigned;
@@ -161,7 +161,7 @@ MPInteger *MPInteger::multiply(const MPInteger *x) const
 MPInteger *MPInteger::divide(const MPInteger *x) const
 {
 	MPInteger *result = this->copy();
-	MPUInteger *rem = result->magnitude->divide(x->magnitude);
+	MPMagnitude *rem = result->magnitude->divide(x->magnitude);
 
 	result->isSigned = this->isSigned ^ x->isSigned;
 
@@ -179,8 +179,8 @@ MPInteger *MPInteger::divide(const MPInteger *x) const
 MPInteger *MPInteger::modulus(const MPInteger *x) const
 {
 	bool sign;
-	MPUInteger *divisor = this->magnitude->copy();
-	MPUInteger *mod = divisor->divide(x->magnitude);
+	MPMagnitude *divisor = this->magnitude->copy();
+	MPMagnitude *mod = divisor->divide(x->magnitude);
 	delete divisor;
 
 	if (mod->isZero())
@@ -192,7 +192,7 @@ MPInteger *MPInteger::modulus(const MPInteger *x) const
 	{
 		// The integers have opposite signs
 		// We can work out new magnitude as x - (this % x)
-		MPUInteger *oldMagnitude = mod;
+		MPMagnitude *oldMagnitude = mod;
 		mod = x->magnitude->copy();
 		mod->subtract(oldMagnitude);
 		delete oldMagnitude;

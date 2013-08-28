@@ -6,14 +6,14 @@ all : test
 UInt32Vector.o : UInt32Vector.cpp UInt32Vector.hpp
 	$(CC) $(CF) -c UInt32Vector.cpp
 
-MPUInteger.o : MPUInteger.cpp MPUInteger.hpp UInt32Vector.hpp
-	$(CC) $(CF) -c MPUInteger.cpp 
+MPMagnitude.o : MPMagnitude.cpp MPMagnitude.hpp UInt32Vector.hpp
+	$(CC) $(CF) -c MPMagnitude.cpp 
 
-MPInteger.o : MPInteger.cpp MPInteger.hpp MPUInteger.hpp
+MPInteger.o : MPInteger.cpp MPInteger.hpp MPMagnitude.hpp
 	$(CC) $(CF) -c MPInteger.cpp
 
-test : test.cpp MPUInteger.o UInt32Vector.o MPInteger.o
-	$(CC) $(CF) -o test test.cpp MPUInteger.o  UInt32Vector.o MPInteger.o
+test : test.cpp MPMagnitude.o UInt32Vector.o MPInteger.o
+	$(CC) $(CF) -o test test.cpp MPMagnitude.o  UInt32Vector.o MPInteger.o
 	
 
 clean:

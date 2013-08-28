@@ -2,7 +2,7 @@
 #define _MPINTEGER_HPP
 
 
-#include "MPUInteger.hpp"
+#include "MPMagnitude.hpp"
 
 #include <string>
 
@@ -25,9 +25,9 @@ struct MPInteger
 	bool isLessThan(const MPInteger *x) const;
 
 	private:
-		MPInteger(MPUInteger *magnitude, bool isSigned);
+		MPInteger(MPMagnitude *magnitude, bool isSigned);
 
-		MPUInteger *magnitude;
+		MPMagnitude *magnitude;
 		bool isSigned;
 };
 
