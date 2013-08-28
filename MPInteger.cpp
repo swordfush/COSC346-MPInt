@@ -161,27 +161,52 @@ MPInteger *MPInteger::multiply(const MPInteger *x) const
 MPInteger *MPInteger::divide(const MPInteger *x) const
 {
 	MPInteger *result = this->copy();
-	result->magnitude->divide(x->magnitude);
+	MPUInteger *rem = result->magnitude->divide(x->magnitude);
 
 	result->isSigned = this->isSigned ^ x->isSigned;
 
 	// Handle the result of floored division where the result is negative
-	if (result->isSigned)
+	if (result->isSigned && !rem->isZero())
 	{
 		result->magnitude->addUInt32(1);
 	}
+
+	delete rem;
 
 	return result;
 }
 
 MPInteger *MPInteger::modulus(const MPInteger *x) const
 {
+	bool sign;
 	MPUInteger *divisor = this->magnitude->copy();
-
 	MPUInteger *mod = divisor->divide(x->magnitude);
-	bool sign = this->isSigned ^ x->isSigned;
-
 	delete divisor;
+
+	if (mod->isZero())
+	{
+		// The remainder is zero; prevent signed zero
+		sign = false;
+	}
+	else if (this->isSigned != x->isSigned)
+	{
+		// The integers have opposite signs
+		// We can work out new magnitude as x - (this % x)
+		MPUInteger *oldMagnitude = mod;
+		mod = x->magnitude->copy();
+		mod->subtract(oldMagnitude);
+		delete oldMagnitude;
+
+		// If x was signed then the result will be
+		sign = x->isSigned;
+	}
+	else
+	{
+		// The integers have the same sign. If taking the modulus of two 
+		// negative numbers then the result is negative
+		sign = this->isSigned;
+	}
+
 	return new MPInteger(mod, sign);
 }
 
