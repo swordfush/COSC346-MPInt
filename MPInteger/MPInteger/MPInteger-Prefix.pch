@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'MPInteger' target in the 'MPInteger' project
+//
+
+#ifdef __OBJC__
+    #import <Foundation/Foundation.h>
+#endif
