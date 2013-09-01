@@ -44,6 +44,15 @@
 	return self;
 }
 
+- (NSString *)reverseString:(NSString *)str {
+    NSMutableString *reversed = [NSMutableString string];
+    const NSUInteger lastIndex = [str length] - 1;
+    for (NSUInteger offset = 0; offset < [str length]; ++offset) {
+        [reversed appendString:[str substringWithRange:NSMakeRange(lastIndex - offset, 1)]];
+    }
+    return reversed;
+}
+
 - (NSString *)description {
     if ([magnitude isZero]) {
 		return @"0";
@@ -61,15 +70,7 @@
         [desc appendFormat:@"-"];
     }
     
-    // Reverse the string
-    NSMutableString *reversed = [NSMutableString string];
-    NSInteger charIndex = [desc length];
-    while (charIndex > 0) {
-        charIndex--;
-        [reversed appendString:[desc substringWithRange:NSMakeRange(charIndex, 1)]];
-    }
-    
-    return reversed;
+    return [self reverseString:desc];
 }
 
 - (MPInteger *)copy {

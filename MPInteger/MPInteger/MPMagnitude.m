@@ -156,7 +156,7 @@
         
         [limbs growToSize:index + 1];
         
-		result = carry + [self limb:index];
+		result = carry + (MPDLimb)[self limb:index];
         [limbs setItem:index toValue:LOW(result)];
 		carry = HIGH(result);
 	}
@@ -227,7 +227,8 @@
     
 	// Obtain the factor to normalize with
 	MPDLimb v1 = [divisor limb:[divisor numberOfLimbs] - 1];
-	MPLimb norm = BASE / (v1 + 1);
+	MPLimb norm = (MPLimb)(BASE / (v1 + 1));
+
     
 	// The normalized dividend with an added digit (u_0)
 	MPMagnitude *normalizedDividend = [[MPMagnitude alloc] initWithLimbs:limbs];
@@ -236,7 +237,7 @@
     
 	// The normalized divisor
 	MPMagnitude *normalizedDivisor = [divisor copy];
-    [normalizedDividend multiplyLimbValue:norm];
+    [normalizedDivisor multiplyLimbValue:norm];
     
 	// D2 through 7
 	MPMagnitude *remainder = [self normalizedLongDivide:normalizedDividend by:normalizedDivisor];
@@ -382,7 +383,7 @@
 }
 
 - (void)multiplyLimbValue:(MPLimb)x {
-    // Store this instances' value
+    // Store this instance's value
 	MPMagnitude *y = [[MPMagnitude alloc] initWithLimbs:limbs];
     
 	// Zero out our current integer -- we'll be adding everything to it
@@ -391,7 +392,7 @@
 	// Multiply each digit with x and store the result in this instance
 	for (NSUInteger i = 0; i < [y numberOfLimbs]; ++i)
 	{
-		MPDLimb result = (MPDLimb)[y limb:i] * x;
+		MPDLimb result = (MPDLimb)[y limb:i] * (MPDLimb)x;
         
         [self addDLimb:result atIndex:i];
 	}

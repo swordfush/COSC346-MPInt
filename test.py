@@ -1,3 +1,11 @@
+# Tests the MPInteger class on randomly generated test cases.
+# Build a program using main as defined in test.m. Then copy the resulting
+# executable into this directory and name it MPInteger-test
+# 
+# This script can then be run using python2.7 test.py <n>, where n is the
+# number of randomly generated pairs (a, b) to test all operations between
+# a and b for.
+
 import subprocess
 import sys
 import random
@@ -18,15 +26,14 @@ def debug(num):
 	return desc
 
 def tryOperation(a, b, op, expect):
-	output = subprocess.check_output(["./test", str(a), op, str(b)], stderr=subprocess.STDOUT)
+	output = subprocess.check_output(["./MPInteger-test", str(a), op, str(b)], stderr=subprocess.STDOUT)
 
-	# Strip newline
-	output = int(output[:-1])
+	output = int(output)
 
 	if output != expect:
 		print "Failed", a, op, b
 		print "\tExpected:", expect
-		print "\tGot:", output
+		print "\tGot:     ", output
 		print "\tExpected internal representation:"
 		print debug(expect)
 		print "\tReceived internal representation:"
@@ -51,8 +58,4 @@ for i in xrange(1, testCount + 1):
 	if b != 0:
 		tryOperation(a, b, "/", a / b)
 		tryOperation(a, b, "%", a % b)
-	if i % 10000 == 0:
-		print "Passed", i
-#print "\t", a
-#print "\t", b
-#print
+	print "Passed", i
