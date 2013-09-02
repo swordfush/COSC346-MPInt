@@ -10,6 +10,9 @@
 
 #import "MPMagnitude.h"
 
+/**
+ * A multi-precision integer.
+ */
 @interface MPInteger : NSObject {
     MPMagnitude *magnitude;
     BOOL isNegative;

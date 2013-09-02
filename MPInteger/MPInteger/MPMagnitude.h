@@ -9,6 +9,10 @@
 #import <Foundation/Foundation.h>
 #import "MPLimbVector.h"
 
+/**
+ * A multi-precision unsigned integer intended to hold the magnitude of a 
+ * signed integer.
+ */
 @interface MPMagnitude : NSObject {
     MPLimbVector *limbs;
 }
