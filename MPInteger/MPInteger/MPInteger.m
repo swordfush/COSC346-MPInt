@@ -142,6 +142,10 @@
 }
 
 - (MPInteger *)divideBy:(MPInteger *)x {
+    if ([x->magnitude isZero]) {
+        [NSException raise:@"Division by zero" format:@"Attempted to divide %@ by zero.", [self description]];
+    }
+    
     MPInteger *result = [self copy];
 	MPMagnitude *rem = [result->magnitude divide:x->magnitude];
     
@@ -156,6 +160,10 @@
 }
 
 - (MPInteger *)modulus:(MPInteger *)x {
+    if ([x->magnitude isZero]) {
+        [NSException raise:@"Division by zero" format:@"Attempted to take the remainder of %@ divided by zero.", [self description]];
+    }
+    
     BOOL sign;
 	MPMagnitude *divisor = [magnitude copy];
 	MPMagnitude *mod = [divisor divide:x->magnitude];
